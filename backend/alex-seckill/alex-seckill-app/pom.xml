@@ -1,0 +1,61 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <!-- 指定父项目 -->
+    <parent>
+        <groupId>com.nextalex</groupId>
+        <artifactId>alex-seckill</artifactId>
+        <version>${revision}</version>
+    </parent>
+
+    <!-- 指定打包方式 -->
+    <packaging>jar</packaging>
+
+    <artifactId>alex-seckill-app</artifactId>
+    <name>${artifactId}</name>
+    <description>启动模块，负责整合所有业务模块</description>
+
+
+    <dependencies>
+        <!-- 引入订单模块 -->
+        <dependency>
+            <groupId>com.nextalex</groupId>
+            <artifactId>alex-seckill-order</artifactId>
+        </dependency>
+
+        <!-- 引入用户模块 -->
+        <dependency>
+            <groupId>com.nextalex</groupId>
+            <artifactId>alex-seckill-user</artifactId>
+        </dependency>
+
+        <!-- 引入商品模块 -->
+        <dependency>
+            <groupId>com.nextalex</groupId>
+            <artifactId>alex-seckill-goods</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Web -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Test 单元测试 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
