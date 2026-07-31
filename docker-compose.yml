@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # 秒杀系统的 MySQL 数据库服务
+  # ==========================================
+  seckill-db:
+    image: mysql:8.0             # 👈 严格匹配你本地已有的镜像
+    container_name: seckill_mysql_container
+    restart: always              # 保证服务挂了能自动重启
+    ports:
+      - "3308:3306"              # 映射到你 Windows 本地的 3306 端口
+    environment:
+      MYSQL_ROOT_PASSWORD: root            # 本地开发密码设为 root
+      MYSQL_DATABASE: seckill_db           # 自动创建一个名为 seckill_db 的秒杀数据库
+      TZ: Asia/Shanghai                    # 确保秒杀开始时间、倒计时时区正确
+    command: 
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_connections=1000               # 🚀 调高最大连接数，防止秒杀时高并发导致连接爆满
+    volumes:
+      # 💾 隐形挂载：安全托管秒杀的商品库存、订单数据
+      - seckill-mysql-data:/var/lib/mysql
+
+# ==========================================
+# 数据卷声明
+# ==========================================
+volumes:
+  seckill-mysql-data:

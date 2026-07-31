@@ -1,0 +1,125 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.5.8</version>
+    <relativePath/> <!-- lookup parent from repository -->
+  </parent>
+
+  <groupId>com.nextalex</groupId>
+  <artifactId>alex-seckill</artifactId>
+  <version>${revision}</version>
+  <!-- 项目名称 -->
+  <name>${project.artifactId}</name>
+  <!-- 项目描述 -->
+  <description>秒杀系统 By NextAlex</description>
+
+  <!-- 多模块项目父工程打包模式必须指定为 pom -->
+  <packaging>pom</packaging>
+
+  <!-- 子模块管理 -->
+  <modules>
+    <module>alex-seckill-common</module>
+    <module>alex-seckill-user</module>
+    <module>alex-seckill-goods</module>
+    <module>alex-seckill-order</module>
+    <module>alex-seckill-app</module>
+  </modules>
+
+  <!-- 版本号统一管理 -->
+  <properties>
+    <!-- 项目版本号 -->
+    <revision>0.0.1-SNAPSHOT</revision>
+    <!-- JDK 版本 -->
+    <java.version>21</java.version>
+    <maven.compiler.source>${java.version}</maven.compiler.source>
+    <maven.compiler.target>${java.version}</maven.compiler.target>
+    <!-- 项目编码 -->
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+
+  <!-- 统一依赖管理 -->
+  <dependencyManagement>
+    <dependencies>
+      <!-- 公共模块 -->
+      <dependency>
+        <groupId>com.nextalex</groupId>
+        <artifactId>alex-seckill-common</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <!-- 商品模块 -->
+      <dependency>
+        <groupId>com.nextalex</groupId>
+        <artifactId>alex-seckill-goods</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <!-- 订单模块 -->
+      <dependency>
+        <groupId>com.nextalex</groupId>
+        <artifactId>alex-seckill-order</artifactId>
+        <version>${revision}</version>
+      </dependency>
+      <!-- 用户模块 -->
+      <dependency>
+        <groupId>com.nextalex</groupId>
+        <artifactId>alex-seckill-user</artifactId>
+        <version>${revision}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <!-- 统一插件管理 -->
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>repackage</id>
+              <goals>
+                <goal>repackage</goal> <!-- 将依赖的 Jar 一起打包 -->
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <source>${java.version}</source>
+            <target>${java.version}</target>
+            <encoding>${project.build.sourceEncoding}</encoding>
+            <annotationProcessorPaths>
+              <path>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+              </path>
+            </annotationProcessorPaths>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+  </build>
+
+
+  <!-- 添加华为云、阿里云 maven 中央仓库，提升 Jar 包下载速度 -->
+  <repositories>
+    <repository>
+      <id>huaweicloud</id>
+      <name>huawei</name>
+      <url>https://mirrors.huaweicloud.com/repository/maven/</url>
+    </repository>
+    <repository>
+      <id>aliyunmaven</id>
+      <name>aliyun</name>
+      <url>https://maven.aliyun.com/repository/public</url>
+    </repository>
+  </repositories>
+</project>
+
