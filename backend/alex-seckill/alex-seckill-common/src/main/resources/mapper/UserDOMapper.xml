@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.alex.seckill.common.domain.mapper.UserDOMapper">
-  <resultMap id="BaseResultMap" type="com.alex.seckill.common.domain.dataobject.UserDO">
+<mapper namespace="com.nextalex.seckill.common.domain.mapper.UserDOMapper">
+  <resultMap id="BaseResultMap" type="com.nextalex.seckill.common.domain.dataobject.UserDO">
     <id column="id" jdbcType="BIGINT" property="id" />
     <result column="nickname" jdbcType="VARCHAR" property="nickname" />
     <result column="password" jdbcType="VARCHAR" property="password" />
@@ -24,7 +24,7 @@
     delete from t_user
     where id = #{id,jdbcType=BIGINT}
   </delete>
-  <insert id="insert" parameterType="com.alex.seckill.common.domain.dataobject.UserDO">
+  <insert id="insert" parameterType="com.nextalex.seckill.common.domain.dataobject.UserDO">
     insert into t_user (id, nickname, `password`, 
       mobile, avatar, `status`, 
       create_time, update_time)
@@ -32,7 +32,7 @@
       #{mobile,jdbcType=VARCHAR}, #{avatar,jdbcType=VARCHAR}, #{status,jdbcType=TINYINT}, 
       #{createTime,jdbcType=TIMESTAMP}, #{updateTime,jdbcType=TIMESTAMP})
   </insert>
-  <insert id="insertSelective" parameterType="com.alex.seckill.common.domain.dataobject.UserDO">
+  <insert id="insertSelective" parameterType="com.nextalex.seckill.common.domain.dataobject.UserDO">
     insert into t_user
     <trim prefix="(" suffix=")" suffixOverrides=",">
       <if test="id != null">
@@ -87,7 +87,7 @@
       </if>
     </trim>
   </insert>
-  <update id="updateByPrimaryKeySelective" parameterType="com.alex.seckill.common.domain.dataobject.UserDO">
+  <update id="updateByPrimaryKeySelective" parameterType="com.nextalex.seckill.common.domain.dataobject.UserDO">
     update t_user
     <set>
       <if test="nickname != null">
@@ -114,7 +114,7 @@
     </set>
     where id = #{id,jdbcType=BIGINT}
   </update>
-  <update id="updateByPrimaryKey" parameterType="com.alex.seckill.common.domain.dataobject.UserDO">
+  <update id="updateByPrimaryKey" parameterType="com.nextalex.seckill.common.domain.dataobject.UserDO">
     update t_user
     set nickname = #{nickname,jdbcType=VARCHAR},
       `password` = #{password,jdbcType=VARCHAR},

@@ -1,4 +1,4 @@
-package com.alex.seckill.common;
+package com.nextalex.seckill.common;
 
 /**
  * Hello world!

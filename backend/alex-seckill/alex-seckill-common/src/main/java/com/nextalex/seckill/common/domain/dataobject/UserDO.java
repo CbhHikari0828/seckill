@@ -1,4 +1,4 @@
-package com.alex.seckill.common.domain.dataobject;
+package com.nextalex.seckill.common.domain.dataobject;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

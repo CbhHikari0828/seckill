@@ -1,8 +1,8 @@
 package com.nextalex.seckill.app;
 
 
-import com.alex.seckill.common.domain.dataobject.UserDO;
-import com.alex.seckill.common.domain.mapper.UserDOMapper;
+import com.nextalex.seckill.common.domain.dataobject.UserDO;
+import com.nextalex.seckill.common.domain.mapper.UserDOMapper;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

@@ -13,7 +13,7 @@ import org.springframework.context.annotation.ComponentScan;
  **/
 @SpringBootApplication
 @ComponentScan({"com.nextalex.seckill.*"}) // 多模块项目中，必需手动指定扫描 com.quanxiaoha.seckill 包下面的所有类
-@MapperScan("com.alex.seckill.common.domain.mapper")
+@MapperScan("com.nextalex.seckill.common.domain.mapper")
 public class SeckillApplication {
 
     public static void main(String[] args) {

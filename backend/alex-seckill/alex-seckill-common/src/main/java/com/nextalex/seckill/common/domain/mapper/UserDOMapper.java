@@ -1,6 +1,6 @@
-package com.alex.seckill.common.domain.mapper;
+package com.nextalex.seckill.common.domain.mapper;
 
-import com.alex.seckill.common.domain.dataobject.UserDO;
+import com.nextalex.seckill.common.domain.dataobject.UserDO;
 
 public interface UserDOMapper {
     int deleteByPrimaryKey(Long id);
