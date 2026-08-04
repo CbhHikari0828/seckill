@@ -1,38 +1,35 @@
 package com.nextalex.seckill.app;
 
-import junit.framework.Test;
-import junit.framework.TestCase;
-import junit.framework.TestSuite;
+
+import com.nextalex.seckill.common.domain.dataobject.UserDO;
+import com.nextalex.seckill.common.domain.mapper.UserDOMapper;
+import jakarta.annotation.Resource;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+import java.time.LocalDateTime;
 
 /**
  * Unit test for simple App.
  */
-public class AppTest 
-    extends TestCase
-{
-    /**
-     * Create the test case
-     *
-     * @param testName name of the test case
-     */
-    public AppTest( String testName )
-    {
-        super( testName );
-    }
+@SpringBootTest
+public class AppTest {
+    @Resource
+    private UserDOMapper userDOMapper;
+
 
     /**
-     * @return the suite of tests being tested
+     * 添加一条用户记录
      */
-    public static Test suite()
-    {
-        return new TestSuite( AppTest.class );
-    }
-
-    /**
-     * Rigourous Test :-)
-     */
-    public void testApp()
-    {
-        assertTrue( true );
+    @Test
+    void testInsertUser() {
+        userDOMapper.insert(UserDO.builder()
+                .nickname("犬小哈")
+                .password("123456")
+                .mobile("18019988888")
+                .status(1)
+                .createTime(LocalDateTime.now())
+                .updateTime(LocalDateTime.now())
+                .build());
     }
 }
