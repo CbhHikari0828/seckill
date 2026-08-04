@@ -5,6 +5,8 @@ import com.nextalex.seckill.common.enums.ResponseCodeEnum;
 import com.nextalex.seckill.common.exception.BizException;
 import com.nextalex.seckill.common.utils.Response;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.LoggerContext;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,6 +14,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Slf4j
 public class TestController {
+
+
+    /**
+     * 验证 Log4j2 是否使用了 Disruptor 异步日志
+     */
+    @GetMapping("/test/checkLogger")
+    public Response<String> checkLogger() {
+        LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+        String loggerClass = ctx.getRootLogger().getClass().getName();
+        return Response.success("Root Logger 实现类: " + loggerClass);
+    }
 
     /**
      * 测试公共返参 - 成功响应
