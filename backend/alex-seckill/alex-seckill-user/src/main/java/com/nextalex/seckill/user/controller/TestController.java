@@ -1,5 +1,6 @@
 package com.nextalex.seckill.user.controller;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.nextalex.seckill.common.aspect.ApiOperationLog;
 import com.nextalex.seckill.common.enums.ResponseCodeEnum;
 import com.nextalex.seckill.common.exception.BizException;
@@ -54,5 +55,20 @@ public class TestController {
         // 模拟抛出系统异常
         int i = 1 / 0;
         return Response.success("不会走到这里");
+    }
+
+    /**
+     * 校验是否正确登录
+     */
+    @GetMapping("/test/isLogin")
+    @ApiOperationLog(description = "校验是否登录")
+    public Response<?> isLogin() {
+        boolean isLogin = StpUtil.isLogin();
+        if(isLogin) {
+            long loginId = StpUtil.getLoginIdAsLong();
+            log.info("===> 当前已登录 ID：{}", loginId);
+            return Response.success("当前登录ID: " + loginId);
+        }
+        else return Response.success("当前未登录");
     }
 }
