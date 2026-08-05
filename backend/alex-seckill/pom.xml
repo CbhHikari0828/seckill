@@ -33,6 +33,10 @@
   <properties>
     <!-- 项目版本号 -->
     <revision>0.0.1-SNAPSHOT</revision>
+    <!-- SaToken 版本 -->
+    <sa-token.version>1.45.0</sa-token.version>
+    <!-- Hutool 版本 -->
+    <hutool.version>5.8.38</hutool.version>
     <!-- JDK 版本 -->
     <java.version>21</java.version>
     <maven.compiler.source>${java.version}</maven.compiler.source>
@@ -49,6 +53,20 @@
   <dependencyManagement>
     <dependencies>
       <!-- 公共模块 -->
+
+      <!-- SaToken 权限认证框架（适配 Spring Boot 3） -->
+      <dependency>
+        <groupId>cn.dev33</groupId>
+        <artifactId>sa-token-spring-boot3-starter</artifactId>
+        <version>${sa-token.version}</version>
+      </dependency>
+
+      <!-- Hutool 工具类库 -->
+      <dependency>
+        <groupId>cn.hutool</groupId>
+        <artifactId>hutool-all</artifactId>
+        <version>${hutool.version}</version>
+      </dependency>
 
       <!-- Disruptor 高性能队列（Log4j2 异步日志需要） -->
       <dependency>
