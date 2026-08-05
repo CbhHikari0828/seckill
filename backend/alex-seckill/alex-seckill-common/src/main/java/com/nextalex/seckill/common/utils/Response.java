@@ -49,7 +49,7 @@ public class Response<T> implements Serializable {
     public static <T> Response<T> fail(BizException bizException) {
         Response<T> response = new Response<>();
         response.setSuccess(false);
-        response.setMessage(bizException.getMessage());
+        response.setMessage(bizException.getErrorMessage());
         response.setErrorCode(bizException.getErrorCode());
         return response;
     }
