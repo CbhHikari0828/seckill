@@ -68,6 +68,14 @@
         <version>${hutool.version}</version>
       </dependency>
 
+      <!-- Sa-Token 整合 RedisTemplate -->
+      <dependency>
+        <groupId>cn.dev33</groupId>
+        <artifactId>sa-token-redis-template</artifactId>
+        <version>${sa-token.version}</version>
+      </dependency>
+
+
       <!-- Disruptor 高性能队列（Log4j2 异步日志需要） -->
       <dependency>
         <groupId>com.lmax</groupId>
