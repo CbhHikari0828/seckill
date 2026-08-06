@@ -5,6 +5,7 @@ import com.nextalex.seckill.common.utils.Response;
 import com.nextalex.seckill.user.model.vo.LoginUserReqVO;
 import com.nextalex.seckill.user.model.vo.LoginUserRspVO;
 import com.nextalex.seckill.user.model.vo.RegisterUserReqVO;
+import com.nextalex.seckill.user.model.vo.SendVerifyCodeReqVO;
 import com.nextalex.seckill.user.service.UserService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,12 @@ public class UserController {
     @ApiOperationLog(description = "用户登录")
     public Response<LoginUserRspVO> login(@Validated @RequestBody LoginUserReqVO loginUserReqVO) {
         return userService.login(loginUserReqVO);
+    }
+
+    @PostMapping("/code/send")
+    @ApiOperationLog(description = "发送验证码")
+    public Response<?> sendVerifyCode(@Validated @RequestBody SendVerifyCodeReqVO sendVerifyCodeReqVO) {
+        return userService.sendVerifyCode(sendVerifyCodeReqVO);
     }
 
 }

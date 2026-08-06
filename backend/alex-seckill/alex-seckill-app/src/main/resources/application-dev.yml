@@ -25,6 +25,19 @@ spring:
       connection-timeout: 30000
       # 连接测试语句
       connection-test-query: SELECT 1
+    # Redis 配置
+  data:
+    redis:
+      # Redis 服务器地址
+      host: localhost
+      # Redis 服务器端口
+      port: 6380
+      # Redis 密码（默认为空，如果设置了密码请填写）
+      password: qwe123!@#
+      # 使用的数据库索引（默认 0）
+      database: 0
+      # 连接超时时间（毫秒）
+      timeout: 5000
 
 ############## Sa-Token 配置 ##############
 sa-token:
@@ -43,6 +56,16 @@ sa-token:
   # 是否输出操作日志
   is-log: true
 
+# 自定义线程池配置
+thread-pool:
+  # 核心线程数
+  core-pool-size: 2
+  # 最大线程数
+  max-pool-size: 5
+  # 队列容量
+  queue-capacity: 100
+  # 空闲线程存活时间（秒）
+  keep-alive-seconds: 60
 
 # MyBatis 开发环境专属配置
 mybatis:

@@ -10,24 +10,49 @@ import com.nextalex.seckill.common.exception.BizException;
 import com.nextalex.seckill.common.utils.Response;
 import com.nextalex.seckill.user.enums.LoginTypeEnum;
 import com.nextalex.seckill.user.enums.UserStatusEnum;
+import com.nextalex.seckill.user.enums.VerifyTypeEnum;
 import com.nextalex.seckill.user.model.vo.LoginUserReqVO;
 import com.nextalex.seckill.user.model.vo.LoginUserRspVO;
 import com.nextalex.seckill.user.model.vo.RegisterUserReqVO;
+import com.nextalex.seckill.user.model.vo.SendVerifyCodeReqVO;
 import com.nextalex.seckill.user.service.UserService;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
+import org.springframework.data.redis.core.RedisOperations;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
+import org.springframework.lang.Nullable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
 public class UserServiceImpl implements UserService {
 
-    @Autowired
+    @Resource
     private UserDOMapper userDOMapper;
+
+    @Resource
+    private RedisTemplate<String, Object> redisTemplate;
+
+    @Resource(name = "bizExecutor")
+    private Executor bizexecutor;
+
+    // Redis 中验证码的 Key 前缀
+    private static final String VERIFY_CODE_KEY_PREFIX = "verify_code:";
+    // Redis 中发送频率限制的 Key 前缀
+    private static final String VERIFY_CODE_LIMIT_KEY_PREFIX = "verify_code_limit:";
+    // 验证码过期时间（分钟）
+    private static final Long VERIFY_CODE_EXPIRE_MINUTES = 5L;
+    // 发送频率限制时间（秒）
+    private static final Long VERIFY_CODE_LIMIT_SECONDS = 60L;
 
     /**
      * 用户注册
@@ -101,6 +126,42 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
+     * 发送验证码服务
+     * @param sendVerifyCodeReqVO
+     * @return
+     */
+    @Override
+    public Response<?> sendVerifyCode(SendVerifyCodeReqVO sendVerifyCodeReqVO) {
+        String mobile = sendVerifyCodeReqVO.getMobile();
+        Integer type = sendVerifyCodeReqVO.getType();
+        // 校验验证码是否正确
+        VerifyTypeEnum verifyTypeEnum = VerifyTypeEnum.valueOf(type);
+        if (Objects.isNull(verifyTypeEnum)) throw new BizException(ResponseCodeEnum.VERIFY_CODE_TYPE_ERROR);
+        // 发送频率限制
+        String limitKey = VERIFY_CODE_LIMIT_KEY_PREFIX + verifyTypeEnum.getPurpose() + ":" + mobile;
+        if (redisTemplate.hasKey(limitKey)) throw new BizException(ResponseCodeEnum.VERIFY_CODE_SEND_TOO_FREQUENT);
+        // 随机验证码六位
+        String verifyCode = RandomUtil.randomNumbers(6);
+        // 通过piePle通道，批量写入 Redis
+        String redisKey = VERIFY_CODE_KEY_PREFIX + verifyTypeEnum.getPurpose() + ":" + mobile;
+        redisTemplate.executePipelined(new SessionCallback<Void>() {
+
+            @Override
+            public Void execute(RedisOperations operations) {
+                // 先写限制频率
+                operations.opsForValue().set(limitKey, "1", VERIFY_CODE_LIMIT_SECONDS, TimeUnit.SECONDS);
+                // 再写验证码
+                operations.opsForValue().set(redisKey, verifyCode, VERIFY_CODE_EXPIRE_MINUTES, TimeUnit.MINUTES);
+                return null;
+            }
+        });
+        // 异步发送验证码
+        bizexecutor.execute(() -> sendSms(mobile, verifyCode));
+
+        return Response.success();
+    }
+
+    /**
      * 校检密码
      * @param rawPassword
      * @param encodePassword
@@ -123,7 +184,27 @@ public class UserServiceImpl implements UserService {
         if (!verifyCode.equals("123456")) throw new BizException(ResponseCodeEnum.USER_VERIFY_CODE_ERROR);
     }
 
+    /**
+     * 发送验证码
+     * @param mobile
+     * @param verifyCode
+     */
+    private void sendSms(String mobile, String verifyCode) {
+        try {
+            // todo 调用Api发送短信验证码
+            log.info("==> 验证码发送成功, mobile: {}, verifyCode: {}", mobile, verifyCode);
+        }catch (Exception e) {
+            log.error("==> 验证码发送失败, mobile: {}, verifyCode: {}", mobile, verifyCode, e);
+        }
+    }
+
+
+    /**
+     * 获取随机用户名
+     * @return
+     */
     private String generateNickname() {
         return "用户" + RandomUtil.randomNumbers(6);
     }
+
 }
