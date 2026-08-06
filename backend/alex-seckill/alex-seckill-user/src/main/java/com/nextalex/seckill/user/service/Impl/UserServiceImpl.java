@@ -65,8 +65,7 @@ public class UserServiceImpl implements UserService {
         String password = registerUserReqVO.getPassword();
         String verifyCode = registerUserReqVO.getVerifyCode();
         // 1.校验验证码
-        // todo 先写死验证码123456，后续短信发送验证码
-        if (!verifyCode.equals("123456")) throw new BizException(ResponseCodeEnum.USER_VERIFY_CODE_ERROR);
+        checkVerifyCode(verifyCode, mobile, VerifyTypeEnum.REGISTER.getPurpose());
         // 校检手机号是否注册
         Long existUserID = userDOMapper.selectIdByMobile(mobile);
         // 校检手机号是否注册
@@ -104,7 +103,7 @@ public class UserServiceImpl implements UserService {
         if(Objects.isNull(userDO)) throw new BizException(ResponseCodeEnum.USER_MOBILE_NOT_REGISTERED);
         // 3.判断验证信息
         if (Objects.equals(type, LoginTypeEnum.PASSWORD.getCode())) checkPassword(loginUserReqVO.getPassword(), userDO.getPassword());
-        else checkVerifyCode(loginUserReqVO.getVerifyCode());
+        else checkVerifyCode(loginUserReqVO.getVerifyCode(), mobile, VerifyTypeEnum.LOGIN.getPurpose());
         // 4.校检账号是否正确
         if (userDO.getStatus().equals(UserStatusEnum.DISABLE.getCode())) throw new BizException(ResponseCodeEnum.USER_STATUS_DISABLED);
         // 5.调用Sa-token执行登录传入用户ID
@@ -178,10 +177,14 @@ public class UserServiceImpl implements UserService {
      * 校验验证码
      * @param verifyCode
      */
-    public void checkVerifyCode(String verifyCode) {
+    public void checkVerifyCode(String verifyCode, String mobile, String purpose) {
         if (StrUtil.isBlank(verifyCode)) throw new BizException(ResponseCodeEnum.USER_VERIFY_CODE_ERROR);
-        // todo 后续传入随机验证码
-        if (!verifyCode.equals("123456")) throw new BizException(ResponseCodeEnum.USER_VERIFY_CODE_ERROR);
+        // 从Redis中获取验证码
+        String redisKey = VERIFY_CODE_KEY_PREFIX + purpose + ":" + mobile;
+        Object storeCode = redisTemplate.opsForValue().get(redisKey);
+        // 对比验证码是否正确
+        if (Objects.isNull(storeCode) || !storeCode.equals(verifyCode)) throw new BizException(ResponseCodeEnum.USER_VERIFY_CODE_ERROR);
+        redisTemplate.delete(redisKey);
     }
 
     /**
