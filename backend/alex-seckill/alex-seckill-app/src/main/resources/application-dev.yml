@@ -68,6 +68,23 @@ sa-token:
   is-log: true
   # token 前缀
   token-prefix: Bearer
+############## 行为验证码配置 ##############
+captcha:
+  # 如果项目中使用到了 Redis，滑块验证码会自动把验证码数据存到 Redis 中， 这里配置 Redis 的 key 的前缀,默认是 captcha:slider
+  prefix: captcha
+  expire: # 验证码过期时间，默认是2分钟,单位毫秒， 可以根据自身业务进行调整
+    default: 10000 # 默认缓存时间 2分钟
+    WORD_IMAGE_CLICK: 20000 # 针对 点选验证码 过期时间设置为 2分钟， 因为点选验证码验证比较慢，把过期时间调整大一些
+  secondary:
+    enabled: true # 二次验证，开启后支持在登录时进行验证码二次校验
+    expire: 120000 # 二次验证过期时间，默认 2 分钟
+    keyPrefix: "captcha:secondary" # 二次验证缓存 Key 前缀
+  # 初始化默认模板资源（滑块形状等）
+  init-default-resource: true
+  # 缓存控制， 默认为 false 不开启
+  local-cache-enabled: true
+  # 验证码会提前缓存一些生成好的验证数据， 默认是 20
+  local-cache-size: 20
 
 # 自定义线程池配置
 thread-pool:
