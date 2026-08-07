@@ -1,5 +1,7 @@
 package com.nextalex.seckill.user.service.Impl;
 
+import cloud.tianai.captcha.application.ImageCaptchaApplication;
+import cloud.tianai.captcha.spring.plugins.secondary.SecondaryVerificationApplication;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
@@ -56,6 +58,9 @@ public class UserServiceImpl implements UserService {
     @Resource
     private StringRedisTemplate stringRedisTemplate;
 
+    @Resource
+    private ImageCaptchaApplication imageCaptchaApplication;
+
     // Bcrypt 密码编辑器
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
     // Redis 中验证码的 Key 前缀
@@ -80,8 +85,8 @@ public class UserServiceImpl implements UserService {
     private final DefaultRedisScript<Long> checkAndDeleteVerifyCodeScript;
     // 登陆失败计数Lua脚本
     private final DefaultRedisScript<Long> checkAndIncrementLoginFailScript;
-
-
+    // 发送验证码限制Lua脚本
+    private final DefaultRedisScript<Long> checkAndIncrementDailyLimitScript;
 
 
     /**
@@ -97,8 +102,13 @@ public class UserServiceImpl implements UserService {
 
         // 2.登录失败计数Lua脚本
         checkAndIncrementLoginFailScript = new DefaultRedisScript<>();
-        checkAndIncrementLoginFailScript.setLocation(new ClassPathResource("lua.check_and_increment_login_fail_count"));
+        checkAndIncrementLoginFailScript.setLocation(new ClassPathResource("lua/check_and_increment_login_fail_count.lua"));
         checkAndIncrementLoginFailScript.setResultType(Long.class);
+
+        // 每日验证码限制发送次数Lua脚本
+        checkAndIncrementDailyLimitScript = new DefaultRedisScript<>();
+        checkAndIncrementDailyLimitScript.setLocation(new ClassPathResource("lua/check_and_increment_verify_code_daily_limit.lua"));
+        checkAndIncrementDailyLimitScript.setResultType(Long.class);
     }
 
     /**
@@ -189,43 +199,47 @@ public class UserServiceImpl implements UserService {
     public Response<?> sendVerifyCode(SendVerifyCodeReqVO sendVerifyCodeReqVO) {
         String mobile = sendVerifyCodeReqVO.getMobile();
         Integer type = sendVerifyCodeReqVO.getType();
+        // 行为验证码二次校验
+        String captchaId = sendVerifyCodeReqVO.getCaptchaId();
+        if (Objects.isNull(captchaId)) throw new BizException(ResponseCodeEnum.CAPTCHA_VERIFICATION_FAILED);
+        // 判断是否支持二次校验
+        boolean verified = false;
+        if (imageCaptchaApplication instanceof SecondaryVerificationApplication) {
+            verified = ((SecondaryVerificationApplication) imageCaptchaApplication).secondaryVerification(captchaId);
+        }
+        if (!verified) throw new BizException(ResponseCodeEnum.CAPTCHA_VERIFICATION_FAILED);
+
         // 校验验证码是否正确
         VerifyTypeEnum verifyTypeEnum = VerifyTypeEnum.valueOf(type);
         if (Objects.isNull(verifyTypeEnum)) throw new BizException(ResponseCodeEnum.VERIFY_CODE_TYPE_ERROR);
         // 发送频率限制
         String limitKey = VERIFY_CODE_LIMIT_KEY_PREFIX + verifyTypeEnum.getPurpose() + ":" + mobile;
-        if (stringRedisTemplate.hasKey(limitKey)) throw new BizException(ResponseCodeEnum.VERIFY_CODE_SEND_TOO_FREQUENT);
+        Boolean absent = stringRedisTemplate.opsForValue()
+                .setIfAbsent(limitKey, "1", VERIFY_CODE_LIMIT_SECONDS, TimeUnit.SECONDS);
+        if (Boolean.FALSE.equals(absent)) throw new BizException(ResponseCodeEnum.VERIFY_CODE_SEND_TOO_FREQUENT);
+
         // 每日发送限制
         String dailyLimitKey = VERIFY_CODE_DAILY_LIMIT_KEY_PREFIX + verifyTypeEnum.getPurpose() + ":" + mobile + ":" + LocalDate.now();
-        // 限制数+1
-        Long dailyCount = stringRedisTemplate.opsForValue().increment(dailyLimitKey);
-        // 首次设置缓存
-        if (Objects.nonNull(dailyCount) && dailyCount == 1) {
-            // 计算当前时间距离第二天凌晨还剩多少秒
-            Long secondsUtilMidnight = Duration.between(
-                    LocalDateTime.now(),
-                    LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIDNIGHT)
-            ).getSeconds();
-            // 设置过期时间
-            stringRedisTemplate.expire(dailyLimitKey, secondsUtilMidnight, TimeUnit.SECONDS);
-        }
+
+        // 计算当前时间距离第二天凌晨还剩多少秒
+        Long secondsUtilMidnight = Duration.between(
+                LocalDateTime.now(),
+                LocalDateTime.of(LocalDate.now().plusDays(1), LocalTime.MIDNIGHT)
+        ).getSeconds();
+        // 执行Lua脚本
+        long dailyCount = stringRedisTemplate.execute(checkAndIncrementDailyLimitScript,
+                Collections.singletonList(dailyLimitKey),
+                String.valueOf(VERIFY_CODE_DAILY_LIMIT),
+                String.valueOf(secondsUtilMidnight));
+
         // 每日限额达到，抛出异常
-        if (Objects.nonNull(dailyCount) && dailyCount > VERIFY_CODE_DAILY_LIMIT) throw new BizException(ResponseCodeEnum.VERIFY_CODE_DAILY_LIMIT_EXCEEDED);
+        if (Objects.nonNull(dailyCount) && dailyCount == -1) throw new BizException(ResponseCodeEnum.VERIFY_CODE_DAILY_LIMIT_EXCEEDED);
         // 随机验证码六位
         String verifyCode = RandomUtil.randomNumbers(6);
-        // 通过piePle通道，批量写入 Redis
+        // 写入验证码
         String redisKey = VERIFY_CODE_KEY_PREFIX + verifyTypeEnum.getPurpose() + ":" + mobile;
-        stringRedisTemplate.executePipelined(new SessionCallback<Void>() {
+        stringRedisTemplate .opsForValue().set(redisKey, verifyCode, VERIFY_CODE_EXPIRE_MINUTES, TimeUnit.MINUTES);
 
-            @Override
-            public Void execute(RedisOperations operations) {
-                // 先写限制频率
-                operations.opsForValue().set(limitKey, "1", VERIFY_CODE_LIMIT_SECONDS, TimeUnit.SECONDS);
-                // 再写验证码
-                operations.opsForValue().set(redisKey, verifyCode, VERIFY_CODE_EXPIRE_MINUTES, TimeUnit.MINUTES);
-                return null;
-            }
-        });
         // 异步发送验证码
         bizexecutor.execute(() -> sendSms(mobile, verifyCode));
 
