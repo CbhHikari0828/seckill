@@ -15,7 +15,23 @@ public interface UserService {
      */
     Response<?> register(RegisterUserReqVO registerUserReqVO);
 
+    /**
+     * 用户登录
+     * @param loginUserReqVO
+     * @return
+     */
     Response<LoginUserRspVO> login(LoginUserReqVO loginUserReqVO);
 
+    /**
+     * 发送验证码
+     * @param sendVerifyCodeReqVO
+     * @return
+     */
     Response<?> sendVerifyCode(SendVerifyCodeReqVO sendVerifyCodeReqVO);
+
+    /**
+     * 退出登录
+     * @return
+     */
+    Response<?> logout();
 }

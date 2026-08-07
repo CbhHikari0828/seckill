@@ -6,3 +6,18 @@
 -- ARGV[1]: 登录失败次数上限（如 5）
 -- ARGV[2]: 锁定时间，单位秒（如 1800，即 30 分钟）
 
+local currentCount = tonumber(redis.call('GET',KEYS[1]) or '0')
+
+if currentCount > tonumber(ARGV[1]) then
+    return -1
+end
+
+-- 累加失败次数
+local newCount = redis.call('INCR', KEYS[1])
+
+-- 首次失败计算过期时间
+if newCount == 1 then
+    redis.call('EXPIRE',KEYS[1], ARGV[2])
+end
+
+return newCount

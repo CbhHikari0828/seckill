@@ -1,5 +1,6 @@
 package com.nextalex.seckill.common.exception;
 
+import cn.dev33.satoken.exception.NotLoginException;
 import com.nextalex.seckill.common.enums.ResponseCodeEnum;
 import com.nextalex.seckill.common.utils.Response;
 import jakarta.servlet.http.HttpServletRequest;
@@ -65,13 +66,36 @@ public class GlobalExceptionHandler {
         return Response.fail(errorMessage,errorCode);
     }
 
+    /**
+     * 未登录异常
+     * @param request
+     * @param e
+     * @return
+     */
+    @ExceptionHandler({ NotLoginException.class })
+    @ResponseBody
+    public Response<Object> handleNotLoginException(HttpServletRequest request, NotLoginException e){
+        log.warn("{} request fail, 未登录异常: {}", request.getRequestURI(), e.getMessage());
+        return Response.fail(ResponseCodeEnum.UNAUTHORIZED);
+    }
 
+
+    /**
+     * 其他异常
+     * @param request
+     * @param e
+     * @return
+     */
     @ExceptionHandler({ Exception.class })
     @ResponseBody
     public Response<Object> handleOtherException(HttpServletRequest request, Exception e) {
         log.warn("{} Request warn, e :{}", request.getRequestURI(), e);
         return Response.fail(ResponseCodeEnum.SYSTEM_ERROR);
     }
+
+
+
+
 
 
 }

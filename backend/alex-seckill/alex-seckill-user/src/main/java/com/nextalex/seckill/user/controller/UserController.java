@@ -44,10 +44,24 @@ public class UserController {
         return userService.login(loginUserReqVO);
     }
 
+    /**
+     * 发送验证码
+     * @param sendVerifyCodeReqVO
+     * @return
+     */
     @PostMapping("/code/send")
     @ApiOperationLog(description = "发送验证码")
     public Response<?> sendVerifyCode(@Validated @RequestBody SendVerifyCodeReqVO sendVerifyCodeReqVO) {
         return userService.sendVerifyCode(sendVerifyCodeReqVO);
     }
 
+    /**
+     * 退出登录
+     * @return
+     */
+    @PostMapping("/logout")
+    @ApiOperationLog(description = "退出登录")
+    public Response<?> logout() {
+        return userService.logout();
+    }
 }
