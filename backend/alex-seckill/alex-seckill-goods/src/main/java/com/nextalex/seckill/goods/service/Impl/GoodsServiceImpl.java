@@ -71,6 +71,7 @@ public class GoodsServiceImpl implements GoodsService {
                     .goodsPrice(goodPrice)
                     .activityId(seckillGoodsDO.getActivityId())
                     .seckillTitle(seckillGoodsDO.getSeckillTitle())
+                    .goodsId(seckillGoodsDO.getGoodsId())
                     .seckillImg(seckillGoodsDO.getSeckillImg())
                     .seckillPrice(seckillGoodsDO.getSeckillPrice())
                     .seckillTotal(seckillGoodsDO.getSeckillTotal())
