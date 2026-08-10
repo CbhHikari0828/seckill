@@ -20,4 +20,12 @@ public class JsonUtils {
     public static String toJsonString(Object obj) {
         return OBJECT_MAPPER.writeValueAsString(obj);
     }
+
+    /**
+     * 初始化ObjectMapper 统一初始化序列化行为
+     * @param objectMapper
+     */
+    public static void init(ObjectMapper objectMapper) {
+        OBJECT_MAPPER = objectMapper;
+    }
 }
