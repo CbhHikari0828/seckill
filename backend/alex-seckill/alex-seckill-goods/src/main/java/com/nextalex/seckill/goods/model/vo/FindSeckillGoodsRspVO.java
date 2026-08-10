@@ -18,6 +18,11 @@ public class FindSeckillGoodsRspVO {
     private long id;
 
     /**
+     * 商品ID
+     */
+    private Long goodsId;
+
+    /**
      * 商品原价
      */
     private BigDecimal goodsPrice;
