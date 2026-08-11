@@ -4,37 +4,36 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.cglib.core.Local;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Date;
 
 @Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class SeckillGoodsDO {
+@Builder
+public class SeckillOrderDO {
     private Long id;
+
+    private Long userId;
 
     private Long activityId;
 
     private Long goodsId;
 
-    private String seckillTitle;
-
-    private String seckillImg;
+    private String orderNo;
 
     private BigDecimal seckillPrice;
 
-    private BigDecimal seckillTotal;
+    private String goodsName;
 
-    private Long seckillStock;
+    private String goodImg;
 
-    private Integer seckillLimit;
+    private Integer status;
 
-    private Integer sort;
-
-    private Integer version;
+    private LocalDateTime expireTime;
 
     private Integer isDeleted;
 

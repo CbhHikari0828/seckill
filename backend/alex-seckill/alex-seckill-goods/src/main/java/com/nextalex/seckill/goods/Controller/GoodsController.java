@@ -2,16 +2,15 @@ package com.nextalex.seckill.goods.Controller;
 
 import com.nextalex.seckill.common.aspect.ApiOperationLog;
 import com.nextalex.seckill.common.utils.Response;
+import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsDetailReqVO;
+import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsDetailRspVO;
 import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsListReqVO;
 import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsRspVO;
 import com.nextalex.seckill.goods.service.GoodsService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -26,5 +25,11 @@ public class GoodsController {
     @ApiOperationLog(description = "查询秒杀商品列表")
     public Response<List<FindSeckillGoodsRspVO>> getSeckillGoodsList(@RequestBody @Validated FindSeckillGoodsListReqVO reqVO){
         return goodsService.findSeckillGoodsList(reqVO);
+    }
+
+    @PostMapping("/detail")
+    @ApiOperationLog(description = "查询秒杀商品详情")
+    public Response<FindSeckillGoodsDetailRspVO> getSeckillGoodsDetail(@RequestBody @Validated FindSeckillGoodsDetailReqVO reqVO) {
+        return goodsService.findSeckillGoodsDetail(reqVO);
     }
 }

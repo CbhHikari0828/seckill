@@ -4,28 +4,26 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.cglib.core.Local;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
-@Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class FindSeckillGoodsRspVO {
-
-    private long id;
+@Builder
+public class FindSeckillGoodsDetailRspVO {
 
     /**
-     * 商品ID
+     * 秒杀商品关联表 ID
+     */
+    private Long id;
+
+    /**
+     * 商品 ID
      */
     private Long goodsId;
-
-    /**
-     * 商品原价
-     */
-    private BigDecimal goodsPrice;
 
     /**
      * 活动 ID
@@ -33,42 +31,52 @@ public class FindSeckillGoodsRspVO {
     private Long activityId;
 
     /**
-     * 秒杀商品名称
+     * 商品名称
      */
-    private String seckillTitle;
+    private String goodsName;
 
     /**
-     * 秒杀商品图片
+     * 商品原价
      */
-    private String seckillImg;
+    private BigDecimal goodsPrice;
 
     /**
-     * 秒杀价格
+     * 商品轮播图列表
+     */
+    private List<String> goodsImgs;
+
+    /**
+     * 商品详情（HTML 内容）
+     */
+    private String goodsDetail;
+
+    /**
+     * 秒杀价
      */
     private BigDecimal seckillPrice;
 
     /**
-     * 秒杀库存总量
+     * 秒杀商品库存总量
      */
     private BigDecimal seckillTotal;
 
     /**
-     * 剩余库存
+     * 秒杀商品剩余库存
      */
     private Long seckillStock;
 
     /**
      * 活动状态：0=未开始，1=进行中，2=已结束
      */
-    private Integer ActivityStatus;
+    private Integer activityStatus;
 
     /**
-     * 开始时间
+     * 活动开始时间
      */
     private LocalDateTime beginTime;
 
     /**
-     * 结束时间
+     * 活动结束时间
      */
     private LocalDateTime endTime;
 }
