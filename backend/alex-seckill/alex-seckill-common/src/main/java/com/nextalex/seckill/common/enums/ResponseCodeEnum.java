@@ -32,6 +32,13 @@ public enum ResponseCodeEnum implements BaseExceptionInterface {
     CAPTCHA_VERIFICATION_FAILED("20012", "行为验证码校验失败，请重新验证"),
     // ----------- 秒杀商品模块异常状态码 -----------
     SECKILL_ACTIVITY_NOT_EXIST("30001", "秒杀活动不存在"),
+    SECKILL_GOODS_NOT_EXIST("30002", "秒杀商品不存在"),
+    // ----------- 秒杀订单模块异常状态码 -----------
+    SECKILL_ACTIVITY_NOT_STARTED("40001", "秒杀活动未开始"),
+    SECKILL_ACTIVITY_ENDED("40002", "秒杀活动已结束"),
+    SECKILL_GOODS_SOLD_OUT("40003", "商品已售罄"),
+    SECKILL_ORDER_DUPLICATE("40004", "您已参与过此商品的秒杀"),
+
 
     ;
 
