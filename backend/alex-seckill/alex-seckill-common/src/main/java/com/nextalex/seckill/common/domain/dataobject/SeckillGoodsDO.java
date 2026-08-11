@@ -34,8 +34,6 @@ public class SeckillGoodsDO {
 
     private Integer sort;
 
-    private Integer version;
-
     private Integer isDeleted;
 
     private LocalDateTime createTime;
