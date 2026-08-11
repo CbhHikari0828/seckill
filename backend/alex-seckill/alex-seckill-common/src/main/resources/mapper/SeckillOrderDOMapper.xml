@@ -185,11 +185,4 @@
       update_time = #{updateTime,jdbcType=TIMESTAMP}
     where id = #{id,jdbcType=BIGINT}
   </update>
-
-  <!-- 基础版：扣减秒杀库存（存在并发超卖 bug） -->
-  <update id="deductStock">
-    update t_seckill_goods
-      set seckill_stock = seckill_stock - 1
-    where id = #{id,jdbcType=BIGINT}
-  </update>
 </mapper>

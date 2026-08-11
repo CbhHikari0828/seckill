@@ -27,4 +27,11 @@ public interface SeckillGoodsDOMapper {
 
     SeckillGoodsDO selectByActivityIdAndGoodsId(@Param("activityId") Long activityId,
                                                 @Param("goodsId") Long goodsId);
+
+    /**
+     * 扣减秒杀库存
+     * @param id
+     * @return
+     */
+    int deductStock(@Param("id")Long id);
 }

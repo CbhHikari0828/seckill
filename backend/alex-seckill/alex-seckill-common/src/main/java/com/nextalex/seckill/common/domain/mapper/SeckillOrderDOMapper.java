@@ -16,10 +16,5 @@ public interface SeckillOrderDOMapper {
 
     int updateByPrimaryKey(SeckillOrderDO record);
 
-    /**
-     * 扣减秒杀库存
-     * @param id
-     * @return
-     */
-    int deductStock(@Param("id")Long id);
+
 }
