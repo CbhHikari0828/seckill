@@ -29,4 +29,5 @@ public class GoodsDO {
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
+
 }

@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class FindSeckillGoodsRspVO {
+public class FindSeckillGoodsListRspVO {
 
     private long id;
 
@@ -55,7 +55,7 @@ public class FindSeckillGoodsRspVO {
     /**
      * 剩余库存
      */
-    private Long seckillStock;
+    private Integer seckillStock;
 
     /**
      * 活动状态：0=未开始，1=进行中，2=已结束

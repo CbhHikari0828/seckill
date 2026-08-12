@@ -1,10 +1,7 @@
 package com.nextalex.seckill.goods.service;
 
 import com.nextalex.seckill.common.utils.Response;
-import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsDetailReqVO;
-import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsDetailRspVO;
-import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsListReqVO;
-import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsRspVO;
+import com.nextalex.seckill.goods.model.vo.*;
 
 import java.util.List;
 
@@ -15,7 +12,7 @@ public interface GoodsService {
      * @param reqVO
      * @return
      */
-    Response<List<FindSeckillGoodsRspVO>> findSeckillGoodsList(FindSeckillGoodsListReqVO reqVO);
+    Response<List<FindSeckillGoodsListRspVO>> findSeckillGoodsList(FindSeckillGoodsListReqVO reqVO);
 
     /**
      * 查询商品详情
@@ -23,4 +20,11 @@ public interface GoodsService {
      * @return
      */
     Response<FindSeckillGoodsDetailRspVO> findSeckillGoodsDetail(FindSeckillGoodsDetailReqVO reqVO);
+
+    /**
+     * 预热指定活动商品的缓存
+     * @param activityId
+     * @return
+     */
+    Response<?> preheatActivityGoods(Long activityId);
 }

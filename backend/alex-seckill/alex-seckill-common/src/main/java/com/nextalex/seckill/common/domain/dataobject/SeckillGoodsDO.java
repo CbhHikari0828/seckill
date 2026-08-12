@@ -28,7 +28,7 @@ public class SeckillGoodsDO {
 
     private BigDecimal seckillTotal;
 
-    private Long seckillStock;
+    private Integer seckillStock;
 
     private Integer seckillLimit;
 

@@ -2,10 +2,7 @@ package com.nextalex.seckill.goods.Controller;
 
 import com.nextalex.seckill.common.aspect.ApiOperationLog;
 import com.nextalex.seckill.common.utils.Response;
-import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsDetailReqVO;
-import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsDetailRspVO;
-import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsListReqVO;
-import com.nextalex.seckill.goods.model.vo.FindSeckillGoodsRspVO;
+import com.nextalex.seckill.goods.model.vo.*;
 import com.nextalex.seckill.goods.service.GoodsService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +20,7 @@ public class GoodsController {
 
     @PostMapping("/list")
     @ApiOperationLog(description = "查询秒杀商品列表")
-    public Response<List<FindSeckillGoodsRspVO>> getSeckillGoodsList(@RequestBody @Validated FindSeckillGoodsListReqVO reqVO){
+    public Response<List<FindSeckillGoodsListRspVO>> getSeckillGoodsList(@RequestBody @Validated FindSeckillGoodsListReqVO reqVO){
         return goodsService.findSeckillGoodsList(reqVO);
     }
 
@@ -32,4 +29,6 @@ public class GoodsController {
     public Response<FindSeckillGoodsDetailRspVO> getSeckillGoodsDetail(@RequestBody @Validated FindSeckillGoodsDetailReqVO reqVO) {
         return goodsService.findSeckillGoodsDetail(reqVO);
     }
+
+
 }

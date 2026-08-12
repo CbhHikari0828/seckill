@@ -211,4 +211,19 @@
     where id = #{id,jdbcType=BIGINT}
     and seckill_stock > 0
   </update>
+
+  <select id="selectStockByActivityId" resultMap="BaseResultMap">
+    select id, seckill_stock
+    from t_seckill_goods
+    where activity_id = #{activityId,jdbcType=BIGINT}
+    and is_deleted = 0
+  </select>
+
+  <select id="selectByGoodsIdAndActivityId" resultMap="BaseResultMap">
+    select id, seckill_stock
+    from t_seckill_goods
+    where activity_id = #{activityId,jdbcType=BIGINT}
+    and goods_id = #{goodsId, jdbcType=BIGINT}
+    and is_deleted = 0
+  </select>
 </mapper>
