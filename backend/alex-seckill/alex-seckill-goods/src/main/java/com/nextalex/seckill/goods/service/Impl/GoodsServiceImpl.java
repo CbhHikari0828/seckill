@@ -88,7 +88,7 @@ public class GoodsServiceImpl implements GoodsService {
         }
         // 第一道防线：布隆过滤器校验活动是否存在
         // 如果布隆过滤器返回 "不存在"，绝对正确，说明该活动 ID 一定不合法，直接拒绝掉
-        RBloomFilter<Long> activityBloom = redissonClient.getBloomFilter(RedisKeyConstants.SECKILL_GOODS_BLOOM_KEY);
+        RBloomFilter<Long> activityBloom = redissonClient.getBloomFilter(RedisKeyConstants.SECKILL_ACTIVITY_BLOOM_KEY);
         if (activityBloom.isExists() && !activityBloom.contains(activityId)) {
             log.info("==> 布隆过滤器拦截：活动不存在, activityId: {}", activityId);
             throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NOT_EXIST);
@@ -190,7 +190,7 @@ public class GoodsServiceImpl implements GoodsService {
         }
         // 第二道防线：查询商品是否存在
         RBloomFilter<String> goodsBloom = redissonClient.getBloomFilter(RedisKeyConstants.SECKILL_GOODS_BLOOM_KEY);
-        if (goodsBloom.isExists() && goodsBloom.contains(activityId + ":" + goodsId)){
+        if (goodsBloom.isExists() && !goodsBloom.contains(activityId + ":" + goodsId)){
             log.info("==> 布隆过滤器拦截：商品不存在, activityId: {}, goodsId: {}", activityId, goodsId);
             throw new BizException(ResponseCodeEnum.SECKILL_GOODS_NOT_EXIST);
         }
