@@ -49,6 +49,8 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <mybatis-generator-maven-plugin.version>1.3.5</mybatis-generator-maven-plugin.version>
     <disruptor.version>3.4.4</disruptor.version>
+    <!-- Redisson 版本 -->
+    <redisson.version>3.52.0</redisson.version>
   </properties>
 
   <!-- 统一依赖管理 -->
@@ -62,6 +64,14 @@
         <artifactId>sa-token-spring-boot3-starter</artifactId>
         <version>${sa-token.version}</version>
       </dependency>
+
+      <!-- Redisson（提供布隆过滤器等高级数据结构） -->
+      <dependency>
+        <groupId>org.redisson</groupId>
+        <artifactId>redisson-spring-boot-starter</artifactId>
+        <version>${redisson.version}</version>
+      </dependency>
+
 
       <!-- Hutool 工具类库 -->
       <dependency>
