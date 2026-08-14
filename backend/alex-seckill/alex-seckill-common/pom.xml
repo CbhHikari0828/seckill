@@ -27,6 +27,14 @@
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
         </dependency>
+
+        <!-- Spring Boot AMQP（整合 RabbitMQ） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+
         <!-- Redisson（提供布隆过滤器等高级数据结构） -->
         <dependency>
             <groupId>org.redisson</groupId>

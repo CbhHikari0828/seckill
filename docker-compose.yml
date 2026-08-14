@@ -42,6 +42,21 @@ services:
       # 持久化 Redis 数据
       - seckill-redis-data:/data
 
+  # ==========================================
+  # 秒杀系统 RabbitMQ 消息队列服务
+  # ==========================================
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: seckill
+      RABBITMQ_DEFAULT_PASS: "qwe123!@#"
+    volumes:
+      - E:/docker/rabbitmq/data:/var/lib/rabbitmq
+
 
 # ==========================================
 # 数据卷声明

@@ -165,7 +165,7 @@ public class GoodsServiceImpl implements GoodsService {
         log.info("==> 商品列表缓存未命中，将数据写入 Redis, redisKey: {}", redisKey);
         // 动态计算过期时间
         Long ttlSecond = RedisKeyConstants.calculateTtlSeconds(seckillActivityDO.getEndTime());
-        if (Objects.nonNull(ttlSecond) && ttlSecond > 0) stringRedisTemplate.opsForValue().set(redisKey,JsonUtils.toJsonString(rspVOS), ttlSecond, TimeUnit.MINUTES);
+        if (Objects.nonNull(ttlSecond) && ttlSecond > 0) stringRedisTemplate.opsForValue().set(redisKey,JsonUtils.toJsonString(rspVOS), ttlSecond, TimeUnit.SECONDS);
         else stringRedisTemplate.opsForValue().set(redisKey,JsonUtils.toJsonString(rspVOS), RedisKeyConstants.ENDED_ACTIVITY_TTL_MINUTES, TimeUnit.MINUTES);
 
         return Response.success(rspVOS);
@@ -259,7 +259,7 @@ public class GoodsServiceImpl implements GoodsService {
         // 将商品详情写入 Redis 缓存
         log.info("==> 商品详情缓存未命中，将数据写入 Redis, redisKey: {}", redisKey);
         Long ttlSecond = RedisKeyConstants.calculateTtlSeconds(activityDO.getEndTime());
-        if (Objects.nonNull(ttlSecond) && ttlSecond > 0) stringRedisTemplate.opsForValue().set(redisKey, JsonUtils.toJsonString(rspVO), ttlSecond, TimeUnit.MINUTES);
+        if (Objects.nonNull(ttlSecond) && ttlSecond > 0) stringRedisTemplate.opsForValue().set(redisKey, JsonUtils.toJsonString(rspVO), ttlSecond, TimeUnit.SECONDS);
         stringRedisTemplate.opsForValue().set(redisKey, JsonUtils.toJsonString(rspVO), RedisKeyConstants.ENDED_ACTIVITY_TTL_MINUTES, TimeUnit.MINUTES);
         // 将商品详情写入 Redis 缓存和本地缓存
         log.info("==> 商品详情缓存未命中，将数据写入 Redis 和本地缓存, key: {}", redisKey);
@@ -344,7 +344,7 @@ public class GoodsServiceImpl implements GoodsService {
             if (Objects.nonNull(goodsDO1)) findSeckillGoodsListRspVO.setGoodsPrice(goodsDO1.getGoodsPrice());
             rspVOS.add(findSeckillGoodsListRspVO);
         }
-        stringRedisTemplate.opsForValue().set(redisKey, JsonUtils.toJsonString(rspVOS), ttlSecond, TimeUnit.MINUTES);
+        stringRedisTemplate.opsForValue().set(redisKey, JsonUtils.toJsonString(rspVOS), ttlSecond, TimeUnit.SECONDS);
         log.info("==> 预热商品列表缓存成功, key: {}, TTL: {}s", redisKey, ttlSecond);
         // 预热每个商品详情缓存
         for (SeckillGoodsDO seckillGoodsDO : seckillGoodsDOS) {
@@ -376,7 +376,7 @@ public class GoodsServiceImpl implements GoodsService {
             }
             // 设置商品详情
             if (Objects.nonNull(goodsDetailDO)) detailRspVO.setGoodsDetail(goodsDetailDO.getDetailContent());
-            stringRedisTemplate.opsForValue().set(detailKey, JsonUtils.toJsonString(detailRspVO), ttlSecond, TimeUnit.MINUTES);
+            stringRedisTemplate.opsForValue().set(detailKey, JsonUtils.toJsonString(detailRspVO), ttlSecond, TimeUnit.SECONDS);
             log.info("==> 预热活动 {} 的 {} 个商品详情缓存完成", activityId, seckillGoodsDOS.size());
         }
         return Response.success();
