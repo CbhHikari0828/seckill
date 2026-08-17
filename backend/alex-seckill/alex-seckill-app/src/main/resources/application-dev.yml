@@ -56,6 +56,9 @@ spring:
     password: qwe123!@# # 密码
     virtual-host: /seckill # 虚拟主机
     connection-timeout: 15000 # 连接超时时间（毫秒）
+    listener:
+      simple:
+        prefetch: 5
 
 ############## Sa-Token 配置 ##############
 sa-token:
