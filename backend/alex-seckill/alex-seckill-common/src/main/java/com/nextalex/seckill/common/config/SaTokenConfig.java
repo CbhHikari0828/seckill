@@ -20,7 +20,8 @@ public class SaTokenConfig implements WebMvcConfigurer {
             SaRouter.match("/seckill/order", r -> StpUtil.checkLogin());
             SaRouter.match("/seckill/logout", r -> StpUtil.checkLogin());
             SaRouter.match("/admin/**",r -> StpUtil.checkLogin());
-        })).addPathPatterns("/**");
+        })).addPathPatterns("/**")
+        .excludePathPatterns("/seckill/order/result/subscribe");
 
     }
 }

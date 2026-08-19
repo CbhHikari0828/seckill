@@ -3,6 +3,7 @@ package com.nextalex.seckill.order.service.Impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.IdUtil;
 import com.nextalex.seckill.common.config.RabbitMQConfig;
+import com.nextalex.seckill.common.constant.RedisKeyConstants;
 import com.nextalex.seckill.common.domain.dataobject.GoodsDO;
 import com.nextalex.seckill.common.domain.dataobject.SeckillActivityDO;
 import com.nextalex.seckill.common.domain.dataobject.SeckillGoodsDO;
@@ -18,13 +19,20 @@ import com.nextalex.seckill.order.enums.OrderStatusEnum;
 import com.nextalex.seckill.order.model.dto.SeckillOrderMqDTO;
 import com.nextalex.seckill.order.model.vo.DoSeckillReqVO;
 import com.nextalex.seckill.order.model.vo.DoSeckillRspVO;
+import com.nextalex.seckill.order.model.vo.FindSeckillOrderResultReqVO;
+import com.nextalex.seckill.order.model.vo.FindSeckillOrderResultRspVO;
+import com.nextalex.seckill.order.mq.SeckillOrderMessageSender;
 import com.nextalex.seckill.order.service.OrderService;
+import com.nextalex.seckill.order.service.SeckillOrderResultNotifyService;
 import com.nextalex.seckill.order.utils.OrderLockUtils;
+import io.micrometer.common.util.StringUtils;
+import io.netty.util.internal.StringUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -32,6 +40,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import javax.swing.*;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @Slf4j
@@ -57,6 +66,17 @@ public class OrderServiceImpl implements OrderService {
 
     @Resource
     private OrderLockUtils orderLockUtils;
+
+    @Resource
+    private SeckillOrderMessageSender seckillOrderMessageSender;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Resource
+    private SeckillOrderResultNotifyService seckillOrderResultNotifyService;
+
+
 
     /**
      * 秒杀下单
@@ -90,7 +110,7 @@ public class OrderServiceImpl implements OrderService {
             if (now.isBefore(activityDO.getBeginTime())) throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NOT_STARTED);
             if (now.isAfter(activityDO.getEndTime())) throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_ENDED);
             //  查询商品，校检商品是否存在
-            SeckillGoodsDO seckillGoodsDO = seckillGoodsDOMapper.selectByGoodsIdAndActivityId(goodsId, activityId);
+            SeckillGoodsDO seckillGoodsDO = seckillGoodsDOMapper.selectByActivityIdAndGoodsId(goodsId, activityId);
             if (Objects.isNull(seckillGoodsDO)) throw new BizException(ResponseCodeEnum.SECKILL_GOODS_NOT_EXIST);
             // 校检库存
             if (seckillGoodsDO.getSeckillStock() <= 0) throw new BizException(ResponseCodeEnum.SECKILL_GOODS_SOLD_OUT);
@@ -106,8 +126,10 @@ public class OrderServiceImpl implements OrderService {
                     .orderNo(orderNo)
                     .requestTime(now)
                     .build();
-            // 发送Mq
-            rabbitTemplate.convertAndSend(RabbitMQConfig.SECKILL_EXCHANGE, RabbitMQConfig.SECKILL_ROUTING_KEY, seckillOrderMqDTO);
+            // 发送 MQ，内部会携带 CorrelationData(orderNo)，方便生产者确认回调定位消息
+            seckillOrderMessageSender.send(seckillOrderMqDTO);
+            // 记录订单状态至Redis，支持用户查询
+            saveOrderStatus(userId, orderNo, OrderStatusEnum.PROCESSING.getStatus());
             log.info("==> 秒杀下单消息已发送至 MQ, orderNo: {}, userId: {}, activityId: {}, goodsId: {}",
                     orderNo, userId, activityId, goodsId);
             // 立即响参 "处理中"，扣库存 + 建订单交给消费者异步处理
@@ -167,12 +189,79 @@ public class OrderServiceImpl implements OrderService {
                seckillOrderDOMapper.insert(order);
                return order;
             });
-            if (Objects.nonNull(orderDO)) log.info("==> 异步秒杀下单成功, orderNo: {}", orderNo);
+            if (Objects.isNull(orderDO)) {
+                // 扣库存失败，更新 Redis 中订单状态为秒杀失败
+                saveOrderStatus(userId, orderNo, OrderStatusEnum.SECKILL_FAILED.getStatus());
+                // 推送SSE结果
+                seckillOrderResultNotifyService.notifyOrderResult(userId, buildStatusResult(orderNo, OrderStatusEnum.SECKILL_FAILED));
+                return;
+            }
+            // 订单创建成功，更新 Redis 中订单状态为待支付
+            saveOrderStatus(userId, orderNo, OrderStatusEnum.PENDING_PAYMENT.getStatus());
+            // 推送 sse 结果
+            seckillOrderResultNotifyService.notifyOrderResult(userId, buildOrderResult(orderDO));
+            log.info("==> 异步秒杀下单成功, orderNo: {}", orderNo);
         }catch (DuplicateKeyException e) {
             // 幂等兜底：order_no 唯一索引命中，说明是重复投递的消息
             // 直接当作成功处理，不再抛异常，避免消费者把消息无限重投
             log.warn("==> 重复消费秒杀消息，订单已存在，幂等返回, orderNo: {}", orderNo);
+            // 不能直接写 PENDING_PAYMENT，避免把已支付、已取消等状态回退
+            SeckillOrderDO existsOrderDO = seckillOrderDOMapper.selectByOrderNoAndUserId(orderNo, userId);
+            if (Objects.nonNull(existsOrderDO)) {
+                saveOrderStatus(userId, orderNo, existsOrderDO.getStatus());
+                seckillOrderResultNotifyService.notifyOrderResult(userId, buildOrderResult(existsOrderDO));
+            }
+            else log.warn("==> 重复消费命中唯一索引，但未查询到当前用户订单, orderNo: {}, userId: {}", orderNo, userId);
         }
+    }
+
+    /**
+     * 查询秒杀订单处理结果
+     * @param reqVO
+     * @return
+     */
+    @Override
+    public Response<FindSeckillOrderResultRspVO> findSeckillOrderResult(FindSeckillOrderResultReqVO reqVO) {
+        // 订单号
+        String orderNo = reqVO.getOrderNo();
+        // 当前用户ID
+        Long userId = StpUtil.getLoginIdAsLong();
+        // 查询 Redis 获取订单状态
+        String redisKey = RedisKeyConstants.SECKILL_ORDER_STATUS_PREFIX + userId + ":" + orderNo;
+        String orderStatus = stringRedisTemplate.opsForValue().get(redisKey);
+        if (StringUtils.isNotBlank(orderStatus)) {
+            OrderStatusEnum statusEnum = OrderStatusEnum.getByStatus(Integer.valueOf(orderStatus));
+            // 如果是下述两种状态立即返回
+            if (statusEnum.equals(OrderStatusEnum.PROCESSING) || statusEnum.equals(OrderStatusEnum.SECKILL_FAILED)) {
+                return Response.success(FindSeckillOrderResultRspVO.builder()
+                        .orderNo(orderNo)
+                        .status(statusEnum.getStatus())
+                        .statusDesc(statusEnum.getDescription())
+                        .build()
+                );
+            }
+        }
+        // 如果是待支付状态，继续查询
+        SeckillOrderDO orderDO = seckillOrderDOMapper.selectByOrderNoAndUserId(orderNo, userId);
+        // 如果没有消息，说明消费还没消费到，返回处理中
+        if (Objects.isNull(orderDO)) {
+            return Response.success(FindSeckillOrderResultRspVO.builder()
+                    .orderNo(orderNo)
+                    .status(OrderStatusEnum.PROCESSING.getStatus())
+                    .statusDesc(OrderStatusEnum.PROCESSING.getDescription())
+                    .build()
+            );
+        }
+        return Response.success(FindSeckillOrderResultRspVO.builder()
+                .orderId(orderDO.getId())
+                .orderNo(orderDO.getOrderNo())
+                .status(orderDO.getStatus())
+                .statusDesc(OrderStatusEnum.getDescriptionByStatus(orderDO.getStatus()))
+                .goodsId(orderDO.getGoodsId())
+                .goodsName(orderDO.getGoodsName())
+                .goodsImg(orderDO.getGoodImg())
+                .seckillPrice(orderDO.getSeckillPrice())
+                .build());
     }
 
     /**
@@ -238,5 +327,37 @@ public class OrderServiceImpl implements OrderService {
                 .status(OrderStatusEnum.PENDING_PAYMENT.getStatus())
                 .build();
         return Response.success(rspVO);
+    }
+
+    /**
+     * 保存秒杀订单异步处理
+     * @param userId
+     * @param orderNo
+     * @param status
+     */
+    private void saveOrderStatus(Long userId, String orderNo, Integer status) {
+        String redisKey = RedisKeyConstants.SECKILL_ORDER_STATUS_PREFIX + userId + ":" + orderNo;
+        stringRedisTemplate.opsForValue().set(redisKey, String.valueOf(status), RedisKeyConstants.SECKILL_ORDER_STATUS_TTL_MINUTES, TimeUnit.MINUTES);
+    }
+
+    private FindSeckillOrderResultRspVO buildOrderResult(SeckillOrderDO orderDO) {
+        return FindSeckillOrderResultRspVO.builder()
+                .orderId(orderDO.getId())
+                .orderNo(orderDO.getOrderNo())
+                .status(orderDO.getStatus())
+                .statusDesc(OrderStatusEnum.getDescriptionByStatus(orderDO.getStatus()))
+                .goodsId(orderDO.getGoodsId())
+                .goodsName(orderDO.getGoodsName())
+                .goodsImg(orderDO.getGoodImg())
+                .seckillPrice(orderDO.getSeckillPrice())
+                .build();
+    }
+
+    private FindSeckillOrderResultRspVO buildStatusResult(String orderNo, OrderStatusEnum status){
+        return FindSeckillOrderResultRspVO.builder()
+                .orderNo(orderNo)
+                .status(status.getStatus())
+                .statusDesc(status.getDescription())
+                .build();
     }
 }
