@@ -4,6 +4,8 @@ import com.nextalex.seckill.common.utils.Response;
 import com.nextalex.seckill.order.model.dto.SeckillOrderMqDTO;
 import com.nextalex.seckill.order.model.vo.DoSeckillReqVO;
 import com.nextalex.seckill.order.model.vo.DoSeckillRspVO;
+import com.nextalex.seckill.order.model.vo.FindSeckillOrderResultReqVO;
+import com.nextalex.seckill.order.model.vo.FindSeckillOrderResultRspVO;
 
 public interface OrderService {
 
@@ -20,4 +22,11 @@ public interface OrderService {
      * @param message
      */
     void createSeckillOrder(SeckillOrderMqDTO message);
+
+    /**
+     * 查询秒杀订单处理结果
+     * @param reqVO
+     * @return
+     */
+    Response<FindSeckillOrderResultRspVO> findSeckillOrderResult(FindSeckillOrderResultReqVO reqVO);
 }

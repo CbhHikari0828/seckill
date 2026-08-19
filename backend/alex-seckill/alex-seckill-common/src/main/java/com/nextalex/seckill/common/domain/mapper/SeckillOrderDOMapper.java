@@ -16,5 +16,8 @@ public interface SeckillOrderDOMapper {
 
     int updateByPrimaryKey(SeckillOrderDO record);
 
+    SeckillOrderDO selectByOrderNoAndUserId(@Param("orderNo") String orderNo,
+                                            @Param("userId") Long userId);
+
 
 }

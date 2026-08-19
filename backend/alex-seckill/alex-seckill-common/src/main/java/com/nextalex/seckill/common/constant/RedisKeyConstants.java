@@ -42,6 +42,18 @@ public class RedisKeyConstants {
     public static final long NULL_CACHE_TTL_MINUTES = 5;
 
     /**
+     * 秒杀订单处理状态 Key 前缀
+     *
+     */
+    public static final String SECKILL_ORDER_STATUS_PREFIX = "seckill:order:status:";
+
+    /**
+     * 秒杀订单处理状态过期时间（单位：分钟）
+     */
+    public static final long SECKILL_ORDER_STATUS_TTL_MINUTES = 30;
+
+
+    /**
      * 安全缓冲时间（单位：秒）
      */
     public static final long SAFETY_BUFFER_SECONDS = 30 * 60; // 30 分钟
