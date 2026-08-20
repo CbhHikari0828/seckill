@@ -1,0 +1,109 @@
+package com.nextalex.seckill.order.service.Impl;
+
+import com.nextalex.seckill.common.constant.RedisKeyConstants;
+import com.nextalex.seckill.common.utils.JsonUtils;
+import com.nextalex.seckill.order.enums.SeckillStockCompensationResultEnum;
+import com.nextalex.seckill.order.enums.SeckillStockDeductResultEnum;
+import com.nextalex.seckill.order.model.dto.SeckillOrderMqDTO;
+import com.nextalex.seckill.order.service.SeckillStockService;
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.PathResource;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Objects;
+
+@Service
+@Slf4j
+public class SeckillStockServiceImpl implements SeckillStockService {
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
+
+    /** 秒杀库存预扣回补 Lua 脚本 */
+    private final DefaultRedisScript<Long> seckillCompensatePreDeductStockScript;
+
+    private final DefaultRedisScript<Long> seckillPreDeductStockScript;
+
+    public SeckillStockServiceImpl() {
+        this.seckillCompensatePreDeductStockScript = new DefaultRedisScript<>();
+        seckillCompensatePreDeductStockScript.setLocation(new PathResource("lua/seckill_compensate_pre_deduct_stock.lua"));
+        seckillCompensatePreDeductStockScript.setResultType(Long.class);
+
+        this.seckillPreDeductStockScript = new DefaultRedisScript<>();
+        seckillPreDeductStockScript.setLocation(new PathResource("lua/seckill_pre_deduct_stock.lua"));
+        seckillPreDeductStockScript.setResultType(Long.class);
+    }
+    /**
+     * Redis Lua 原子欲扣库存
+     * @return
+     */
+    @Override
+    public SeckillStockDeductResultEnum preDeductStock(SeckillOrderMqDTO seckillOrderMqDTO, Long userOrderTtlSeconds,
+                                                       Long activityBeginTimeMillis, Long activityEndTimeMillis
+    ) {
+        Long activityId = seckillOrderMqDTO.getActivityId();
+        Long goodsId = seckillOrderMqDTO.getGoodsId();
+        Long userId = seckillOrderMqDTO.getUserId();
+        // 构建库存Redis Key
+        String stockKey = RedisKeyConstants.buildSeckillStockKey(activityId, goodsId);
+
+        // 构建用户购买标记RedisKey
+        String userOrderKey = RedisKeyConstants.buildSeckillUserOrderKey(activityId, goodsId, userId);
+
+        // 构建待回补上下文 Key
+        String compensationKey = RedisKeyConstants.buildSeckillOrderCompensationKey(seckillOrderMqDTO.getOrderNo());
+
+        // 执行 Lua 脚本
+        Long resultCode = stringRedisTemplate.execute(seckillPreDeductStockScript,
+                List.of(stockKey, userOrderKey, compensationKey), String.valueOf(userOrderTtlSeconds),
+                String.valueOf(activityBeginTimeMillis), String.valueOf(activityEndTimeMillis),
+                JsonUtils.toJsonString(seckillOrderMqDTO), seckillOrderMqDTO.getOrderNo());
+
+        if (Objects.isNull(resultCode)) {
+            throw new IllegalStateException("执行秒杀库存预扣 Lua 脚本失败");
+        }
+        SeckillStockDeductResultEnum result = SeckillStockDeductResultEnum.getByCode(resultCode);
+        if (Objects.isNull(result)) throw new IllegalStateException("执行秒杀库存预扣 Lua 脚本失败");
+        if (Objects.equals(result, SeckillStockDeductResultEnum.STOCK_NOT_PREHEATED)) log.warn("==> 秒杀库存未预热, key: {}", stockKey);
+        else if (Objects.equals(result, SeckillStockDeductResultEnum.REPEATED_ORDER)) log.info("==> 重复参与秒杀, userId: {}, activityId: {}, goodsId: {}", userId, activityId, goodsId);
+        else log.info("==> 秒杀库存预扣完成, key: {}, result: {}", stockKey, result.getDescription());
+        return result;
+    }
+
+    /**
+     * Redis Lua 原子回补秒杀库存，并删除用户购买标记
+     *
+     * @param activityId
+     * @param goodsId
+     * @param userId
+     * @param orderNo
+     */
+    @Override
+    public SeckillStockCompensationResultEnum compensatePreDeductStock(Long activityId, Long goodsId, Long userId, String orderNo) {
+        // 构建库存RedisKey
+        String stockKey = RedisKeyConstants.buildSeckillStockKey(activityId, goodsId);
+        // 构建用户购买标记RedisKey
+        String userOrderKey = RedisKeyConstants.buildSeckillUserOrderKey(activityId, goodsId, userId);
+        // 执行回补Lua脚本
+        Long resultCode = stringRedisTemplate.execute(seckillCompensatePreDeductStockScript, List.of(stockKey, userOrderKey), orderNo);
+        if (Objects.isNull(resultCode)) {
+            throw new IllegalStateException("执行秒杀库存回补 Lua 脚本失败");
+        }
+        // 获取返回值对应枚举
+        SeckillStockCompensationResultEnum result = SeckillStockCompensationResultEnum.getByCode(resultCode);
+        if (Objects.isNull(result)) {
+            throw new IllegalStateException("秒杀库存回补 Lua 脚本返回未知结果码：" + resultCode);
+        }
+
+        log.info("==> 秒杀库存回补完成, stockKey: {}, userOrderKey: {}, result: {}",
+                stockKey, userOrderKey, result.getDescription());
+
+        return result;
+
+    }
+}

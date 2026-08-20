@@ -52,6 +52,11 @@ public class RedisKeyConstants {
      */
     public static final long SECKILL_ORDER_STATUS_TTL_MINUTES = 30;
 
+    /**
+     * 秒杀库存 Key 前缀
+     */
+    public static final String SECKILL_STOCK_PREFIX = "seckill:stock:";
+
 
     /**
      * 安全缓冲时间（单位：秒）
@@ -64,6 +69,39 @@ public class RedisKeyConstants {
      */
     public static final long ENDED_ACTIVITY_TTL_MINUTES = 5;
 
+    /**
+     * 秒杀用户购买标记 Key 前缀
+     */
+    public static final String SECKILL_USER_ORDER_PREFIX = "seckill:user:order:";
+
+    /**
+     * 秒杀活动商品元数据 Key 前缀
+     */
+    public static final String SECKILL_ACTIVITY_GOODS_META_PREFIX = "seckill:activity:goods:meta:";
+
+    /**
+     * 构建秒杀活动商品元数据 Key
+     */
+    public static String buildSeckillActivityGoodsMetaKey(Long activityId, Long goodsId) {
+        return SECKILL_ACTIVITY_GOODS_META_PREFIX + activityId + ":" + goodsId;
+    }
+
+
+    /**
+     * 构建秒杀用户购买标记 Key
+     */
+    public static String buildSeckillUserOrderKey(Long activityId, Long goodsId, Long userId) {
+        return SECKILL_USER_ORDER_PREFIX + activityId + ":" + goodsId + ":" + userId;
+    }
+
+
+    /**
+     * 构建秒杀库存 Key
+     */
+    public static String buildSeckillStockKey(Long activityId, Long goodsId) {
+        return SECKILL_STOCK_PREFIX + activityId + ":" + goodsId;
+    }
+
 
 
     public static Long calculateTtlSeconds(LocalDateTime endTime) {
@@ -72,4 +110,17 @@ public class RedisKeyConstants {
 
         return ttlSeconds > 0 ? ttlSeconds : null;
     }
+
+    /**
+     * 秒杀订单待回补上下文 Key 前缀
+     */
+    public static final String SECKILL_ORDER_COMPENSATION_PREFIX = "seckill:order:compensation:";
+
+    /**
+     * 构建秒杀订单待回补上下文 Key
+     */
+    public static String buildSeckillOrderCompensationKey(String orderNo) {
+        return SECKILL_ORDER_COMPENSATION_PREFIX + orderNo;
+    }
+
 }

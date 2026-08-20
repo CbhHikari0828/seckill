@@ -8,6 +8,7 @@ import com.nextalex.seckill.common.domain.dataobject.*;
 import com.nextalex.seckill.common.domain.mapper.*;
 import com.nextalex.seckill.common.enums.ResponseCodeEnum;
 import com.nextalex.seckill.common.exception.BizException;
+import com.nextalex.seckill.common.model.dto.SeckillActivityGoodsMetaDTO;
 import com.nextalex.seckill.common.utils.JsonUtils;
 import com.nextalex.seckill.common.utils.Response;
 import com.nextalex.seckill.goods.enums.ActivityStatusEnum;
@@ -283,6 +284,14 @@ public class GoodsServiceImpl implements GoodsService {
             log.info("==> 预热跳过：活动不存在, activityId: {}", activityId);
             throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NOT_EXIST);
         }
+
+        // 判断活动是否已经结束
+        if (Objects.isNull(activityDO.getEndTime())
+                || !LocalDateTime.now().isBefore(activityDO.getEndTime())) {
+            log.info("==> 预热跳过：活动已结束, activityId: {}", activityId);
+            throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_ENDED);
+        }
+
         // 动态计算TTL预热时间
         Long ttlSecond = RedisKeyConstants.calculateTtlSeconds(activityDO.getEndTime());
         if (Objects.isNull(ttlSecond) || ttlSecond <= 0) {
@@ -344,6 +353,21 @@ public class GoodsServiceImpl implements GoodsService {
             if (Objects.nonNull(goodsDO1)) findSeckillGoodsListRspVO.setGoodsPrice(goodsDO1.getGoodsPrice());
             rspVOS.add(findSeckillGoodsListRspVO);
         }
+
+        // 预热秒杀下单元数据
+        for (SeckillGoodsDO seckillGoodsDO : seckillGoodsDOS) {
+            String orderMetaKey = RedisKeyConstants.buildSeckillActivityGoodsMetaKey(activityId, seckillGoodsDO.getGoodsId());
+            SeckillActivityGoodsMetaDTO activityGoodsMetaDTO = SeckillActivityGoodsMetaDTO.builder()
+                    .seckillGoodsId(seckillGoodsDO.getId())
+                    .activityId(activityId)
+                    .goodsId(seckillGoodsDO.getGoodsId())
+                    .seckillPrice(seckillGoodsDO.getSeckillPrice())
+                    .beginTime(activityDO.getBeginTime())
+                    .endTime(activityDO.getEndTime())
+                    .build();
+            stringRedisTemplate.opsForValue().set(orderMetaKey, JsonUtils.toJsonString(activityGoodsMetaDTO),
+                    ttlSecond, TimeUnit.SECONDS);
+        }
         stringRedisTemplate.opsForValue().set(redisKey, JsonUtils.toJsonString(rspVOS), ttlSecond, TimeUnit.SECONDS);
         log.info("==> 预热商品列表缓存成功, key: {}, TTL: {}s", redisKey, ttlSecond);
         // 预热每个商品详情缓存
@@ -378,6 +402,15 @@ public class GoodsServiceImpl implements GoodsService {
             if (Objects.nonNull(goodsDetailDO)) detailRspVO.setGoodsDetail(goodsDetailDO.getDetailContent());
             stringRedisTemplate.opsForValue().set(detailKey, JsonUtils.toJsonString(detailRspVO), ttlSecond, TimeUnit.SECONDS);
             log.info("==> 预热活动 {} 的 {} 个商品详情缓存完成", activityId, seckillGoodsDOS.size());
+
+            // 预热秒杀缓存
+            for (SeckillGoodsDO seckillGoodsDO1 : seckillGoodsDOS) {
+                String stockKey = RedisKeyConstants.buildSeckillStockKey(activityId,seckillGoodsDO1.getGoodsId());
+                stringRedisTemplate.opsForValue().set(stockKey, String.valueOf(seckillGoodsDO1.getSeckillStock()), ttlSecond, TimeUnit.SECONDS);
+
+                log.info("==> 预热秒杀库存成功, key: {}, stock: {}, TTL: {}s",
+                        stockKey, seckillGoodsDO.getSeckillStock(), ttlSecond);
+            }
         }
         return Response.success();
     }
