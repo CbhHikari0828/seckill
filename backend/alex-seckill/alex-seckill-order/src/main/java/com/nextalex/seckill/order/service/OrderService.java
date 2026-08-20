@@ -1,6 +1,7 @@
 package com.nextalex.seckill.order.service;
 
 import com.nextalex.seckill.common.utils.Response;
+import com.nextalex.seckill.order.enums.SeckillStockCompensationResultEnum;
 import com.nextalex.seckill.order.model.dto.SeckillOrderMqDTO;
 import com.nextalex.seckill.order.model.vo.DoSeckillReqVO;
 import com.nextalex.seckill.order.model.vo.DoSeckillRspVO;
@@ -29,4 +30,6 @@ public interface OrderService {
      * @return
      */
     Response<FindSeckillOrderResultRspVO> findSeckillOrderResult(FindSeckillOrderResultReqVO reqVO);
+
+
 }

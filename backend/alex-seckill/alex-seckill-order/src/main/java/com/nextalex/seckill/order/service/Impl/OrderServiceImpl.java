@@ -14,8 +14,13 @@ import com.nextalex.seckill.common.domain.mapper.SeckillGoodsDOMapper;
 import com.nextalex.seckill.common.domain.mapper.SeckillOrderDOMapper;
 import com.nextalex.seckill.common.enums.ResponseCodeEnum;
 import com.nextalex.seckill.common.exception.BizException;
+import com.nextalex.seckill.common.model.dto.SeckillActivityGoodsMetaDTO;
+import com.nextalex.seckill.common.utils.DateTimeUtils;
+import com.nextalex.seckill.common.utils.JsonUtils;
 import com.nextalex.seckill.common.utils.Response;
 import com.nextalex.seckill.order.enums.OrderStatusEnum;
+import com.nextalex.seckill.order.enums.SeckillStockCompensationResultEnum;
+import com.nextalex.seckill.order.enums.SeckillStockDeductResultEnum;
 import com.nextalex.seckill.order.model.dto.SeckillOrderMqDTO;
 import com.nextalex.seckill.order.model.vo.DoSeckillReqVO;
 import com.nextalex.seckill.order.model.vo.DoSeckillRspVO;
@@ -24,21 +29,26 @@ import com.nextalex.seckill.order.model.vo.FindSeckillOrderResultRspVO;
 import com.nextalex.seckill.order.mq.SeckillOrderMessageSender;
 import com.nextalex.seckill.order.service.OrderService;
 import com.nextalex.seckill.order.service.SeckillOrderResultNotifyService;
+import com.nextalex.seckill.order.service.SeckillStockService;
 import com.nextalex.seckill.order.utils.OrderLockUtils;
 import io.micrometer.common.util.StringUtils;
 import io.netty.util.internal.StringUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.javassist.Loader;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.PathResource;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.swing.*;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -62,12 +72,6 @@ public class OrderServiceImpl implements OrderService {
     private GoodsDOMapper goodsDOMapper;
 
     @Resource
-    private RabbitTemplate rabbitTemplate;
-
-    @Resource
-    private OrderLockUtils orderLockUtils;
-
-    @Resource
     private SeckillOrderMessageSender seckillOrderMessageSender;
 
     @Resource
@@ -75,6 +79,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Resource
     private SeckillOrderResultNotifyService seckillOrderResultNotifyService;
+
+    @Resource
+    private SeckillStockService seckillStockService;
 
 
 
@@ -87,62 +94,90 @@ public class OrderServiceImpl implements OrderService {
     public Response<DoSeckillRspVO> doSeckill(DoSeckillReqVO doSeckillReqVO) {
         // 活动ID
         Long activityId = doSeckillReqVO.getActivityId();
+
         // 商品ID
         Long goodsId = doSeckillReqVO.getGoodsId();
+
+        // 记录请求时间
+        LocalDateTime now = LocalDateTime.now();
+
         // 获取当前登录用户ID
         long userId = StpUtil.getLoginIdAsLong();
+
         log.info("==> 当前登录用户 ID: {}", userId);
-        // 应用层锁：防止同一用户并发重复下单
-        // 构建锁 Key "userId:activityId:goodsId"
-        String lockKey = userId + ":" + activityId + ":" + goodsId;
-        // 尝试获取锁，获取失败，则说明该用户对该商品已经有请求在处理中
-        if (!orderLockUtils.tryLock(lockKey)) {
-            log.warn("==> 应用层锁拦截重复下单, userId: {}, activityId: {}, goodsId: {}", userId, activityId, goodsId);
-            throw new BizException(ResponseCodeEnum.SECKILL_ORDER_PROCESSING);
+
+        // Redis 中查询元数据
+        String redisKey = RedisKeyConstants.buildSeckillActivityGoodsMetaKey(activityId, goodsId);
+        String cacheValue = stringRedisTemplate.opsForValue().get(redisKey);
+
+        if (StringUtils.isBlank(cacheValue)) {
+            log.error("==> 秒杀下单入口元数据未预热, key: {}", redisKey);
+            throw new IllegalStateException("秒杀下单入口元数据未预热，请先预热活动");
         }
-        try {
-            // 校检活动是否存在
-            SeckillActivityDO activityDO = seckillActivityDOMapper.selectByPrimaryKey(activityId);
-            if (Objects.isNull(activityDO)) throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NOT_EXIST);
-            // 秒杀下单时间
-            LocalDateTime now = LocalDateTime.now();
-            // 活动是否开始/结束
-            if (now.isBefore(activityDO.getBeginTime())) throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NOT_STARTED);
-            if (now.isAfter(activityDO.getEndTime())) throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_ENDED);
-            //  查询商品，校检商品是否存在
-            SeckillGoodsDO seckillGoodsDO = seckillGoodsDOMapper.selectByActivityIdAndGoodsId(goodsId, activityId);
-            if (Objects.isNull(seckillGoodsDO)) throw new BizException(ResponseCodeEnum.SECKILL_GOODS_NOT_EXIST);
-            // 校检库存
-            if (seckillGoodsDO.getSeckillStock() <= 0) throw new BizException(ResponseCodeEnum.SECKILL_GOODS_SOLD_OUT);
-            // 利用雪花算法生成 ID
-            String orderNo = IdUtil.getSnowflakeNextIdStr();
-            // 构建消息体
-            SeckillOrderMqDTO seckillOrderMqDTO = SeckillOrderMqDTO.builder()
-                    .userId(userId)
-                    .activityId(activityId)
-                    .goodsId(goodsId)
-                    .seckillGoodsId(seckillGoodsDO.getId())
-                    .seckillPrice(seckillGoodsDO.getSeckillPrice())
-                    .orderNo(orderNo)
-                    .requestTime(now)
-                    .build();
-            // 发送 MQ，内部会携带 CorrelationData(orderNo)，方便生产者确认回调定位消息
-            seckillOrderMessageSender.send(seckillOrderMqDTO);
-            // 记录订单状态至Redis，支持用户查询
-            saveOrderStatus(userId, orderNo, OrderStatusEnum.PROCESSING.getStatus());
-            log.info("==> 秒杀下单消息已发送至 MQ, orderNo: {}, userId: {}, activityId: {}, goodsId: {}",
-                    orderNo, userId, activityId, goodsId);
-            // 立即响参 "处理中"，扣库存 + 建订单交给消费者异步处理
-            return Response.success(
-                    DoSeckillRspVO.builder()
-                            .orderNo(orderNo)
-                            .status(OrderStatusEnum.PROCESSING.getStatus())
-                            .build()
-            );
-        }finally {
-            orderLockUtils.unlock(lockKey);
+        // 转换Json为实体类
+        SeckillActivityGoodsMetaDTO activityGoodsMetaDTO = JsonUtils.parseObject(cacheValue, SeckillActivityGoodsMetaDTO.class);
+
+        // 根据活动结束时间，来计算用户购买标记缓存的 TTL，覆盖整个秒杀活动周期
+        Long userOrderTtlSeconds = RedisKeyConstants.calculateTtlSeconds(activityGoodsMetaDTO.getEndTime());
+
+        // 使用 Hutool 提供的工具方法，通过雪花算法生成订单号
+        String orderNo = IdUtil.getSnowflakeNextIdStr();
+
+        // 构建消息体
+        SeckillOrderMqDTO seckillOrderMqDTO = SeckillOrderMqDTO.builder()
+                .userId(userId)
+                .activityId(activityId)
+                .seckillGoodsId(activityGoodsMetaDTO.getSeckillGoodsId())
+                .seckillPrice(activityGoodsMetaDTO.getSeckillPrice())
+                .goodsId(goodsId)
+                .orderNo(orderNo)
+                .requestTime(now)
+                .build();
+
+        // 执行 Redis Lua 脚本：原子校验一人一单并预扣库存
+        SeckillStockDeductResultEnum deductResult = seckillStockService.preDeductStock(
+                seckillOrderMqDTO, userOrderTtlSeconds,
+                DateTimeUtils.toEpochMilli(activityGoodsMetaDTO.getBeginTime()),
+                DateTimeUtils.toEpochMilli(activityGoodsMetaDTO.getEndTime()));
+
+        // 判断 Lua 脚本执行结果
+        // 秒杀活动还没开始
+        if (Objects.equals(deductResult, SeckillStockDeductResultEnum.ACTIVITY_NOT_STARTED)) {
+            throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_NOT_STARTED);
         }
 
+        // 秒杀活动已经结束
+        if (Objects.equals(deductResult, SeckillStockDeductResultEnum.ACTIVITY_ENDED)) {
+            throw new BizException(ResponseCodeEnum.SECKILL_ACTIVITY_ENDED);
+        }
+
+        // 已售罄
+        if (Objects.equals(deductResult, SeckillStockDeductResultEnum.SOLD_OUT)) {
+            throw new BizException(ResponseCodeEnum.SECKILL_GOODS_SOLD_OUT);
+        }
+
+        // 请勿重复参与秒杀
+        if (Objects.equals(deductResult, SeckillStockDeductResultEnum.REPEATED_ORDER)) {
+            throw new BizException(ResponseCodeEnum.SECKILL_ORDER_DUPLICATE);
+        }
+
+
+
+        // 发送 MQ，内部会携带 CorrelationData(orderNo)，方便生产者确认回调定位消息
+        boolean isSendSuccess = seckillOrderMessageSender.send(seckillOrderMqDTO);
+
+        if (!isSendSuccess) {
+            log.warn("==> 秒杀下单消息发送结果未知，订单保持处理中等待后续确认, orderNo: {}", orderNo);
+        }
+
+
+        // 立即响参 "处理中"，扣库存 + 建订单交给消费者异步处理
+        return Response.success(
+                DoSeckillRspVO.builder()
+                        .orderNo(orderNo)
+                        .status(OrderStatusEnum.PROCESSING.getStatus())
+                        .build()
+        );
 
     }
 
@@ -263,6 +298,8 @@ public class OrderServiceImpl implements OrderService {
                 .seckillPrice(orderDO.getSeckillPrice())
                 .build());
     }
+
+
 
     /**
      * 秒杀下单核心逻辑

@@ -1,0 +1,27 @@
+package com.nextalex.seckill.order.enums;
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+import java.lang.reflect.Array;
+import java.util.Arrays;
+
+@Getter
+@AllArgsConstructor
+public enum SeckillStockCompensationResultEnum {
+
+    SUCCESS(1L, "库存回补成功"),
+    USER_ORDER_MARK_NOT_EXIST(0L, "用户购买标记不存在或不属于当前订单"),
+    STOCK_NOT_PREHEATED(-1L, "秒杀库存未预热");
+
+    private final Long code;
+
+    private final String description;
+
+    public static SeckillStockCompensationResultEnum getByCode(Long code){
+        return Arrays.stream(values())
+                .filter(result -> result.getCode().equals(code))
+                .findFirst()
+                .orElse(null);
+    }
+}
